@@ -459,7 +459,7 @@ function updateContext() {
 function moveFrame(time) {
   const dt = Math.min((time - frameTime) / 1000, 0.1);
   frameTime = time;
-  if (document.hidden || modal.open) {
+  if (document.hidden || !document.hasFocus() || modal.open) {
     requestAnimationFrame(moveFrame);
     return;
   }
@@ -566,7 +566,8 @@ document.addEventListener('keyup', (e) => {
 window.addEventListener('resize', sizeWorld);
 window.addEventListener('blur', () => {
   keys.clear();
-  walkTarget = null;
+  // Native dialog focus changes can briefly blur the window. Pause movement
+  // while unfocused, but retain a destination the player already selected.
   save();
 });
 window.addEventListener('pagehide', () => {
@@ -671,9 +672,12 @@ function showMap() {
   );
   document.querySelectorAll('[data-map-spot]').forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = b.dataset.mapSpot;
         modal.close();
-        approach(b.dataset.mapSpot);
+        requestAnimationFrame(() => approach(id));
       }),
   );
 }

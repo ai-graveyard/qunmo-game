@@ -72,7 +72,14 @@ async function noPageOverflow(page) {
 
 test('走访提示、取消、免费回看、出口推进、暂停与刷新续玩', async ({ page }) => {
   await begin(page);
-  await approach(page, 'ledger');
+  await page.getByRole('button', { name: '小城地图', exact: true }).click();
+  await page.locator('[data-map-spot="ledger"]').click();
+  // A real tab switch during auto-walk must pause and retain the destination.
+  const other = await page.context().newPage();
+  await other.goto('about:blank');
+  await other.close();
+  await page.bringToFront();
+  await expect(page.locator('#narrative')).toBeVisible();
   await expect(page.locator('.visit-notice')).toContainText('确认选项或记入手册会消耗 1 次');
   await page.locator('#back-explore').click();
   await expect(page.locator('#visit-counter')).toContainText('0 / 2');
