@@ -4,6 +4,47 @@ import { SAVE_KEY } from '../../engine.mjs';
 import { CHAPTERS } from '../../data.mjs';
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__gameTrace = [];
+    const record = (kind, details = {}) => {
+      window.__gameTrace.push({ time: Math.round(performance.now()), kind, ...details });
+      if (window.__gameTrace.length > 80) window.__gameTrace.shift();
+    };
+    for (const type of ['click', 'keydown', 'focusin'])
+      document.addEventListener(
+        type,
+        (event) => {
+          const target = event.target.closest?.('button') || event.target;
+          record(type, {
+            id: target.id,
+            map: target.dataset?.mapSpot,
+            spot: target.dataset?.spot,
+            key: event.key,
+            target: target.tagName,
+          });
+        },
+        true,
+      );
+    window.addEventListener('blur', () => record('window-blur'));
+    window.addEventListener('focus', () => record('window-focus'));
+    document.addEventListener('DOMContentLoaded', () => {
+      new MutationObserver((records) => {
+        for (const mutation of records)
+          if (mutation.target.id === 'narrative') {
+            record('narrative-hidden', {
+              old: mutation.oldValue,
+              hidden: mutation.target.hidden,
+              focus: document.activeElement?.id,
+            });
+          }
+      }).observe(document.body, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['hidden'],
+        attributeOldValue: true,
+      });
+    });
+  });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -29,6 +70,7 @@ test.afterEach(async ({ page }, testInfo) => {
           destination: document.querySelector('#destination')?.style.left,
           chapter: save?.chapter,
           visited: save?.visited,
+          trace: window.__gameTrace,
         };
       }, SAVE_KEY)
       .catch((error) => ({ error: error.message }));
