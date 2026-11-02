@@ -10,11 +10,34 @@ test.beforeEach(async ({ page }) => {
     if (message.type() === 'error') errors.push(message.text());
   });
   page.__gameErrors = errors;
+  await page.bringToFront();
   await page.goto('./');
   await expect(page.locator('#begin')).toBeVisible();
   // Fail each test for unhandled UI errors, including those after an import.
 });
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus) {
+    const diagnostics = await page
+      .evaluate((key) => {
+        const save = JSON.parse(localStorage.getItem(key) || 'null');
+        return {
+          visibility: document.visibilityState,
+          focused: document.hasFocus(),
+          modalOpen: document.querySelector('#modal')?.open,
+          actor: document.querySelector('#actor')?.style.left,
+          destinationHidden: document.querySelector('#destination')?.hidden,
+          destination: document.querySelector('#destination')?.style.left,
+          chapter: save?.chapter,
+          visited: save?.visited,
+        };
+      }, SAVE_KEY)
+      .catch((error) => ({ error: error.message }));
+    console.log('Game diagnostics:', JSON.stringify(diagnostics));
+    await testInfo.attach('game-state', {
+      body: JSON.stringify(diagnostics, null, 2),
+      contentType: 'application/json',
+    });
+  }
   expect(page.__gameErrors).toEqual([]);
 });
 

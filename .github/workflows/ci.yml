@@ -27,8 +27,25 @@ jobs:
       - run: npm run release:pack
 
   browser:
-    timeout-minutes: 15
+    name: browser (${{ matrix.name }})
+    timeout-minutes: 12
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: chromium
+            browser: chromium
+            projects: --project=chromium
+          - name: firefox
+            browser: firefox
+            projects: --project=firefox
+          - name: webkit
+            browser: webkit
+            projects: --project=webkit
+          - name: touch
+            browser: chromium
+            projects: --project=mobile --project=small-screen --project=landscape
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -36,9 +53,18 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps --no-shell chromium firefox webkit
+      - run: npx playwright install --with-deps --no-shell ${{ matrix.browser }}
       - run: npm run build
-      - run: npm run test:e2e
-      - run: npm run test:e2e -- --project=chromium
+      - run: npm run test:e2e -- ${{ matrix.projects }} --workers=1
+      - if: matrix.name == 'chromium'
+        run: npm run test:e2e -- --project=chromium --workers=1
         env:
           E2E_BASE_PATH: /games/qunmo
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-failure-${{ matrix.name }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
