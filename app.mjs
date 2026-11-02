@@ -460,7 +460,7 @@ function updateContext() {
     p.innerHTML = `<kbd>E</kbd><span>${key === 'ending' ? '查看最终记录' : key === 'exit' ? '离开这里 · 继续故事' : `${state.visited.includes(key) ? '回看' : nearest.kind} · ${nearest.label}`}</span>`;
 }
 function moveFrame(time) {
-  const dt = Math.min((time - frameTime) / 1000, 0.1);
+  const dt = Math.min((time - frameTime) / 1000, 0.25);
   frameTime = time;
   if (document.hidden || !document.hasFocus() || modal.open) {
     requestAnimationFrame(moveFrame);
@@ -572,6 +572,12 @@ document.addEventListener('keyup', (e) => {
   if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(e.key)) save();
 });
 window.addEventListener('resize', sizeWorld);
+window.addEventListener('focus', () => {
+  frameTime = performance.now();
+});
+document.addEventListener('visibilitychange', () => {
+  frameTime = performance.now();
+});
 window.addEventListener('blur', () => {
   keys.clear();
   // Native dialog focus changes can briefly blur the window. Pause movement

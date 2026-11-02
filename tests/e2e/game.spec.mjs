@@ -91,7 +91,8 @@ async function begin(page) {
 async function approach(page, id) {
   await page.getByRole('button', { name: '小城地图', exact: true }).click();
   await page.locator(`[data-map-spot="${id}"]`).click();
-  await expect(page.locator('#narrative')).toBeVisible();
+  // This waits for real world travel, including software-rendered CI browsers.
+  await expect(page.locator('#narrative')).toBeVisible({ timeout: 20_000 });
 }
 async function confirmVisit(page, id, choice) {
   await approach(page, id);

@@ -11,7 +11,7 @@ export function stepMovement(x, keys, target, dt, active) {
     if (Math.abs(distance) < 0.55) return { x: target.x, dir: 0, target: null, arrived: target };
     dir = Math.sign(distance);
   }
-  let next = x + dir * Math.min(Math.max(dt, 0), 0.1) * (keys.has('Shift') ? 31 : 20);
+  let next = x + dir * Math.min(Math.max(dt, 0), 0.25) * (keys.has('Shift') ? 31 : 20);
   if (target && Math.sign(target.x - next) !== Math.sign(target.x - x)) next = target.x;
   return { x: Math.max(6, Math.min(94, next)), dir, target, arrived: null, manual };
 }
