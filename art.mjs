@@ -1,8 +1,32 @@
 export { figure, sceneSVG, propSVG, WARDROBE } from './period-art.mjs';
 
-export function relationSVG(people,relations,known=()=>true,exported=false) {
- const coords={stavrogin:[500,340],varvara:[500,100],stepan:[195,100],pyotr:[170,340],shigalyov:[110,575],shatov:[390,575],kirillov:[665,575],liza:[820,220],marya:[820,410],lebyadkin:[950,575],narrator:[960,100]};
- const lines=relations.filter(r=>known(r[3])).map(([a,b,label])=>{const [x1,y1]=coords[a],[x2,y2]=coords[b];return `<g><path d="M${x1} ${y1+12}L${x2} ${y2-12}" stroke="#a7aa95" stroke-width="1.5" ${['思想影响','利用理论'].includes(label)?'stroke-dasharray="5 5"':''}/><rect x="${(x1+x2)/2-39}" y="${(y1+y2)/2-12}" width="78" height="25" rx="12" fill="#f3efe3"/><text x="${(x1+x2)/2}" y="${(y1+y2)/2+5}" text-anchor="middle" font-size="15" fill="#66705e">${label}</text></g>`}).join('');
- const nodes=people.map(p=>{const [x,y]=coords[p.id];return `<g ${exported?'':`data-person="${p.id}" role="button" tabindex="0" aria-label="查看${p.name}"`} class="graph-person"><circle cx="${x}" cy="${y-12}" r="${p.id==='stavrogin'?44:34}" fill="#e6e2d3" stroke="${p.color}" stroke-width="${p.id==='stavrogin'?2:1}"/><text x="${x}" y="${y-3}" text-anchor="middle" font-size="26" fill="${p.color}">${p.name.slice(0,1)}</text><rect x="${x-73}" y="${y+29}" width="146" height="29" rx="3" fill="#f3efe3"/><text x="${x}" y="${y+50}" text-anchor="middle" font-size="19" font-weight="600" fill="#38463d">${p.name}</text><text x="${x}" y="${y+73}" text-anchor="middle" font-size="14" fill="#7a7f6e">${p.tag}</text></g>`}).join('');
- return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 710" class="relation-graph" role="img" aria-label="人物关系图"><rect width="1080" height="710" fill="#f3efe3"/>${lines}${nodes}</svg>`;
+export function relationSVG(people, relations, known = () => true, exported = false) {
+  const coords = {
+    stavrogin: [500, 340],
+    varvara: [500, 100],
+    stepan: [195, 100],
+    pyotr: [170, 340],
+    shigalyov: [110, 575],
+    shatov: [390, 575],
+    kirillov: [665, 575],
+    liza: [820, 220],
+    marya: [820, 410],
+    lebyadkin: [950, 575],
+    narrator: [960, 100],
+  };
+  const lines = relations
+    .filter((r) => known(r[3]))
+    .map(([a, b, label]) => {
+      const [x1, y1] = coords[a],
+        [x2, y2] = coords[b];
+      return `<g><path d="M${x1} ${y1 + 12}L${x2} ${y2 - 12}" stroke="#a7aa95" stroke-width="1.5" ${['思想影响', '利用理论'].includes(label) ? 'stroke-dasharray="5 5"' : ''}/><rect x="${(x1 + x2) / 2 - 39}" y="${(y1 + y2) / 2 - 12}" width="78" height="25" rx="12" fill="#f3efe3"/><text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 5}" text-anchor="middle" font-size="15" fill="#66705e">${label}</text></g>`;
+    })
+    .join('');
+  const nodes = people
+    .map((p) => {
+      const [x, y] = coords[p.id];
+      return `<g ${exported ? '' : `data-person="${p.id}" role="button" tabindex="0" aria-label="查看${p.name}"`} class="graph-person"><circle cx="${x}" cy="${y - 12}" r="${p.id === 'stavrogin' ? 44 : 34}" fill="#e6e2d3" stroke="${p.color}" stroke-width="${p.id === 'stavrogin' ? 2 : 1}"/><text x="${x}" y="${y - 3}" text-anchor="middle" font-size="26" fill="${p.color}">${p.name.slice(0, 1)}</text><rect x="${x - 73}" y="${y + 29}" width="146" height="29" rx="3" fill="#f3efe3"/><text x="${x}" y="${y + 50}" text-anchor="middle" font-size="19" font-weight="600" fill="#38463d">${p.name}</text><text x="${x}" y="${y + 73}" text-anchor="middle" font-size="14" fill="#7a7f6e">${p.tag}</text></g>`;
+    })
+    .join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 710" class="relation-graph" role="img" aria-label="人物关系图"><rect width="1080" height="710" fill="#f3efe3"/>${lines}${nodes}</svg>`;
 }

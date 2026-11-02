@@ -6,14 +6,14 @@
   "preview_urls": false,
   "routes": [
     { "pattern": "game.v2ai.org/qunmo", "zone_name": "v2ai.org" },
-    { "pattern": "game.v2ai.org/qunmo/*", "zone_name": "v2ai.org" }
+    { "pattern": "game.v2ai.org/qunmo/*", "zone_name": "v2ai.org" },
   ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "run_worker_first": true,
     "html_handling": "none",
-    "not_found_handling": "none"
+    "not_found_handling": "none",
   },
-  "observability": { "enabled": false }
+  "observability": { "enabled": false },
 }

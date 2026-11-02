@@ -1,0 +1,10 @@
+node_modules/
+dist/
+output/
+.wrangler/
+.playwright-cli/
+playwright-report/
+test-results/
+deploy/
+LICENSE*
+docs/images/

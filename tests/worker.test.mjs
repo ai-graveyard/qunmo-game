@@ -2,9 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../cloudflare/worker.mjs';
 
-const env = { ASSETS: { fetch: async request => new Response(new URL(request.url).pathname, {
-  headers: { 'Content-Type': request.url.endsWith('.mjs') ? 'text/javascript' : 'text/html' }
-}) } };
+const env = {
+  ASSETS: {
+    fetch: async (request) =>
+      new Response(new URL(request.url).pathname, {
+        headers: { 'Content-Type': request.url.endsWith('.mjs') ? 'text/javascript' : 'text/html' },
+      }),
+  },
+};
 const request = (path, options) => new Request('https://game.v2ai.org' + path, options);
 
 test('入口补尾斜杠且保留查询参数，使相对模块地址正确', async () => {
@@ -20,7 +25,11 @@ test('正式域名统一到 HTTPS，本地开发仍可使用 HTTP', async () => 
   assert.equal(local.status, 200);
 });
 test('游戏页面和嵌套路径资源映射到对应静态文件', async () => {
-  for (const [path, file] of [['/qunmo/', '/index.html'], ['/qunmo/app.mjs', '/app.mjs'], ['/qunmo/game.css', '/game.css']]) {
+  for (const [path, file] of [
+    ['/qunmo/', '/index.html'],
+    ['/qunmo/app.mjs', '/app.mjs'],
+    ['/qunmo/game.css', '/game.css'],
+  ]) {
     const response = await worker.fetch(request(path), env);
     assert.equal(response.status, 200);
     assert.equal(await response.text(), file);
@@ -28,7 +37,15 @@ test('游戏页面和嵌套路径资源映射到对应静态文件', async () =>
   }
 });
 test('不把其他游戏路径和服务端文件误当成游戏页面', async () => {
-  for (const path of ['/other-game/', '/app.mjs', '/qunmo/server.mjs', '/qunmo/package.json', '/qunmo/.env', '/qunmo/tests/engine.test.mjs', '/qunmo/unknown.mjs']) {
+  for (const path of [
+    '/other-game/',
+    '/app.mjs',
+    '/qunmo/server.mjs',
+    '/qunmo/package.json',
+    '/qunmo/.env',
+    '/qunmo/tests/engine.test.mjs',
+    '/qunmo/unknown.mjs',
+  ]) {
     assert.equal((await worker.fetch(request(path), env)).status, 404);
   }
 });
