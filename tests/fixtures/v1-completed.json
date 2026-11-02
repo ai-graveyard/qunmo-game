@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "chapter": 5,
+  "visited": ["archive", "survivors"],
+  "evidence": ["patron", "marriage", "names", "crowd", "invitation"],
+  "flags": {
+    "questionedLetter": true,
+    "listenedMarya": true,
+    "marriageConfirmed": true,
+    "protectedMarya": true,
+    "warnedShatov": true,
+    "refusedList": true,
+    "exitOpened": true,
+    "savedLiza": true,
+    "shatovWaiting": true,
+    "savedShatov": true,
+    "sourcesMarked": true,
+    "honestRecord": true
+  },
+  "stats": {
+    "clarity": 8,
+    "care": 10,
+    "complicity": 0,
+    "unrest": 0
+  },
+  "log": [
+    {
+      "chapter": 0,
+      "title": "书桌上的账簿",
+      "text": "账目里反复出现斯捷潘的名字。你翻到最新一页：他的生活仍由这所房子的女主人支付。",
+      "choice": "调查并记录",
+      "evidence": "patron"
+    },
+    {
+      "chapter": 0,
+      "title": "斯捷潘",
+      "text": "他整理领结：“当然，我愿意……不过，具体是指什么？”",
+      "choice": "请他说明自己愿意承担的事",
+      "evidence": null
+    },
+    {
+      "chapter": 0,
+      "title": "幕间抉择",
+      "text": "你记下收信人的名字，也记下彼得不愿解释这封信。",
+      "choice": "先问清来由，再决定递交"
+    },
+    {
+      "chapter": 1,
+      "title": "玛利亚",
+      "text": "她慢慢放松了手。你把她的说法原样记下，没有替她补出故事。",
+      "choice": "坐下来，把她的话听完",
+      "evidence": "marriage"
+    },
+    {
+      "chapter": 1,
+      "title": "门外的斯塔夫罗金",
+      "text": "“是的，我们结过婚。”他说。你得到确认，却仍不知道他准备为此做什么。",
+      "choice": "出示玛利亚的证言，核对婚姻",
+      "evidence": null
+    },
+    {
+      "chapter": 1,
+      "title": "幕间抉择",
+      "text": "你把纸条收进自己的手册。她的生活没有成为今晚的谈资。",
+      "choice": "保留证言，只向当事人求证"
+    },
+    {
+      "chapter": 2,
+      "title": "桌角的名单",
+      "text": "沙托夫的名字被圈了两次。旁边写着“退出”和“可靠性”。你把这些字记下，尚不能据此断定完整计划。",
+      "choice": "调查并记录",
+      "evidence": "names"
+    },
+    {
+      "chapter": 2,
+      "title": "沙托夫",
+      "text": "他沉默了一会儿：“谢谢。我会留心。”",
+      "choice": "提醒他留意单独发来的邀约",
+      "evidence": null
+    },
+    {
+      "chapter": 2,
+      "title": "幕间抉择",
+      "text": "你第一次让彼得在别人面前等了一会儿。他最终收起纸。",
+      "choice": "拒绝签一份用途不明的名单"
+    },
+    {
+      "chapter": 3,
+      "title": "围观的人群",
+      "text": "“大家都这么说。”你依次追问消息从哪里来，回答却总指向另一个没有名字的人。",
+      "choice": "调查并记录",
+      "evidence": "crowd"
+    },
+    {
+      "chapter": 3,
+      "title": "被木箱挡住的侧门",
+      "text": "你把木箱移开，推开侧门。门后的巷子远离聚集的人群，可以通往河岸。",
+      "choice": "调查并记录",
+      "evidence": null
+    },
+    {
+      "chapter": 3,
+      "title": "幕间抉择",
+      "text": "你说明了自己核实的结果。她终于愿意随你穿过侧门，在河边停下来。身后的喧嚣没有追上来。丽莎在这一改编分支中活了下来。",
+      "choice": "向丽莎说明指控未经核实，带她从侧门撤离"
+    },
+    {
+      "chapter": 4,
+      "title": "送来的邀约",
+      "text": "两份笔迹相同。结合被圈出的名字，这已足够让你认真警惕。",
+      "choice": "与名单上的笔迹核对",
+      "evidence": "invitation"
+    },
+    {
+      "chapter": 4,
+      "title": "沙托夫的门",
+      "text": "你为他们提来水。他答应在出门前等你的消息。",
+      "choice": "留下帮忙，确认他目前的处境",
+      "evidence": null
+    },
+    {
+      "chapter": 4,
+      "title": "幕间抉择",
+      "text": "你把两份笔迹摆在一起。他决定留下。这条改编分支中，邀约没有把他带到僻静处。",
+      "choice": "带着核实的邀约，阻止沙托夫赴约"
+    },
+    {
+      "chapter": 5,
+      "title": "整理证据",
+      "text": "你给每条消息标明来源。没有确认的地方，仍留着问号。",
+      "choice": "调查并记录",
+      "evidence": null
+    },
+    {
+      "chapter": 5,
+      "title": "河岸的长椅",
+      "text": "有的人等到了清晨，有的人只留下空座。你的帮助有边界，但每一次到场都属于具体的人。",
+      "choice": "调查并记录",
+      "evidence": null
+    },
+    {
+      "chapter": 5,
+      "title": "幕间抉择",
+      "text": "你没有把自己从事件里删掉。手册在此合上，故事留给下一位读者。",
+      "choice": "写明自己核实过的事，也写明自己的参与"
+    }
+  ],
+  "x": 38.398800000000115,
+  "finished": true,
+  "started": true
+}

@@ -1,0 +1,16 @@
+name: 改进建议
+description: 提出玩法、阅读或开发体验建议
+title: '[建议] '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 希望解决什么问题？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的行为与完成标准
+    validations:
+      required: true

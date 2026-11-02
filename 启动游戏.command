@@ -6,7 +6,7 @@ if ! command -v node >/dev/null 2>&1; then
   fi
 fi
 if ! command -v node >/dev/null 2>&1; then
-  print "需要先安装 Node.js 18 或更新版本：https://nodejs.org"
+  print "需要先安装 Node.js 22 或更新版本：https://nodejs.org"
   read -k 1 "?按任意键退出"
   exit 1
 fi

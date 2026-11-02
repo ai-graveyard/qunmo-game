@@ -12,3 +12,6 @@ dist/
 .dev.vars.*
 *.pem
 *.key
+playwright-report/
+test-results/
+wrangler.local.jsonc

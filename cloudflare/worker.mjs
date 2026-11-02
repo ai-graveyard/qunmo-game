@@ -1,33 +1,28 @@
-const BASE = '/qunmo';
-const ASSETS = new Set([
-  '/index.html',
-  '/favicon.svg',
-  '/style.css',
-  '/period.css',
-  '/game.css',
-  '/app.mjs',
-  '/data.mjs',
-  '/engine.mjs',
-  '/art.mjs',
-  '/period-art.mjs',
-]);
+import { RUNTIME_FILES } from '../runtime-files.mjs';
+const ASSETS = new Set(RUNTIME_FILES.map((file) => '/' + file));
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const BASE = env.BASE_PATH ?? '/qunmo';
+    if (BASE !== '' && !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+$/.test(BASE)) {
+      return new Response('Invalid BASE_PATH', { status: 500 });
+    }
+    const httpsHost = env.HTTPS_HOST ?? 'game.v2ai.org';
     if (!['GET', 'HEAD'].includes(request.method)) {
       return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
     }
     if (
-      url.hostname === 'game.v2ai.org' &&
+      httpsHost &&
+      url.hostname === httpsHost &&
       url.protocol === 'http:' &&
       (url.pathname === BASE || url.pathname.startsWith(BASE + '/'))
     ) {
       url.protocol = 'https:';
-      if (url.pathname === BASE) url.pathname = BASE + '/';
+      if (BASE && url.pathname === BASE) url.pathname = BASE + '/';
       return Response.redirect(url.toString(), 308);
     }
-    if (url.pathname === BASE) {
+    if (BASE && url.pathname === BASE) {
       url.pathname = BASE + '/';
       return Response.redirect(url.toString(), 308);
     }
@@ -40,7 +35,7 @@ export default {
     const headers = new Headers(response.headers);
     headers.set('Cache-Control', 'no-cache');
     headers.set('X-Content-Type-Options', 'nosniff');
-    return new Response(response.body, {
+    return new Response(request.method === 'HEAD' ? null : response.body, {
       status: response.status,
       statusText: response.statusText,
       headers,

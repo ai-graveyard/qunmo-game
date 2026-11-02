@@ -1,6 +1,13 @@
 import { PEOPLE, person, CHAPTERS, EVIDENCE, RELATIONS, SETTING } from './data.mjs';
-import { newGame, visit, resolveEvent, available, restore, ending, SAVE_KEY } from './engine.mjs';
+import { newGame, visit, resolveEvent, restore, ending, SAVE_KEY } from './engine.mjs';
 import { figure, sceneSVG, relationSVG, propSVG, WARDROBE } from './art.mjs';
+import { MAX_SAVE_BYTES } from './save.mjs';
+import { escapeHTML as escape, choiceButtons, focusDialogueControl } from './ui/dialogue.mjs';
+import { stepMovement, cameraTarget } from './ui/movement.mjs';
+import { createAmbientAudio } from './ui/audio.mjs';
+import { downloadFile, journalText, peopleSVG } from './ui/downloads.mjs';
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const ambient = createAmbientAudio();
 
 const $ = (s) => document.querySelector(s);
 const icon = (name) => {
@@ -23,11 +30,6 @@ const icon = (name) => {
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.note}"/></svg>`;
 };
-const escape = (s) =>
-  String(s).replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
 let storageOK = true,
   renderedChapter = -1;
 function getSaved(key) {
@@ -54,8 +56,7 @@ let phase = 'browse',
   frameTime = 0,
   focusBeforeModal = null,
   bookTab = 'people',
-  spoilers = false,
-  ambient = null;
+  spoilers = false;
 let camera = 0,
   cameraRise = 0,
   dialogueRise = 0,
@@ -115,17 +116,14 @@ function render() {
  <button id="scene-exit" class="scene-exit" style="left:95%" aria-label="前往出口" hidden><span class="exit-arrow">➜</span><span>离开这里<small>继续故事</small></span></button>
  <div id="destination" class="destination" hidden></div><div class="actor" id="actor" style="left:${state.x}%">${figure()}<div class="actor-label">叙述者</div></div></div><div class="screen-grain"></div><div class="scene-shade"></div></section>
  <header class="game-hud"><div class="hud-location"><button class="game-seal" id="era" aria-label="查看1869年时代手记">群</button><div><div class="hud-kicker">${SETTING.label} <span>／ ${c.subtitle}</span></div><h1>${c.place}</h1></div></div><div class="hud-actions"><span class="saved-label"></span><button class="hud-icon" id="fullscreen" aria-label="切换全屏" title="全屏 F">${icon('full')}</button><button class="hud-icon" id="pause" aria-label="暂停菜单" title="暂停 Esc">${icon('menu')}</button></div></header>
- <aside class="quest-hud" aria-label="当前任务"><div class="quest-heading"><span>手头的差事</span><div id="visit-counter" class="quest-dots"></div></div><p id="quest-text"></p><div class="quest-foot"><span id="quest-act">${c.title}</span><span id="quest-direction">探索小城 →</span></div></aside>
+ <aside class="quest-hud" aria-label="当前任务"><div class="quest-heading"><span>手头的差事</span><div id="visit-counter" class="quest-dots"></div></div><p id="quest-text"></p><div class="quest-foot"><span id="quest-act">${c.title}</span><button id="quest-direction" disabled>探索小城 →</button></div></aside>
  <div class="chapter-ribbon" id="chapter-ribbon"><span>${c.subtitle} · ${String(state.chapter + 1).padStart(2, '0')}</span><strong>${c.title}</strong><i>${c.time}</i></div>
  <div class="game-bottom"><div class="control-legend"><span><kbd>A</kbd><kbd>D</kbd> 移动</span><span><kbd>E</kbd> 互动</span><span><kbd>Shift</kbd> 快走</span></div><button id="context-prompt" class="context-prompt" hidden></button><nav class="inventory-dock" aria-label="随身物品"><button data-nav="map" aria-label="小城地图">${icon('map')}<span>地图</span><kbd>M</kbd></button><button data-nav="book" aria-label="人物手册">${icon('book')}<span>人物</span><kbd>B</kbd></button><button data-nav="journal" aria-label="见闻录">${icon('note')}<span>见闻</span><b id="evidence-badge">${state.evidence.length}</b><kbd>J</kbd></button></nav></div>
  <div class="touch-gamepad"><div class="touch-walk"><button data-move="-1" aria-label="向左移动">‹</button><button data-move="1" aria-label="向右移动">›</button></div><button id="touch-interact" aria-label="与附近人物交谈">E</button></div>
  <section class="game-dialogue" id="narrative" aria-label="剧情与选择" hidden></section></main>`;
   bindShell();
   sizeWorld();
-  camera = Math.max(
-    0,
-    Math.min(worldWidth - viewWidth, (state.x / 100) * worldWidth - viewWidth * 0.4),
-  );
+  camera = cameraTarget(state.x, worldWidth, viewWidth);
   updateHUD();
   renderNarrative();
   dialogueObserver?.disconnect();
@@ -150,12 +148,14 @@ function updateHUD() {
   const badge = $('#evidence-badge');
   if (badge) badge.textContent = state.evidence.length;
   const direction = $('#quest-direction');
-  if (direction)
+  if (direction) {
+    direction.disabled = state.finished || state.visited.length < 2;
     direction.textContent = state.finished
       ? '终幕'
       : state.visited.length >= 2
         ? '前往出口 →'
         : '走近人物与物件';
+  }
   document.querySelectorAll('[data-spot]').forEach((b) => {
     const seen = state.visited.includes(b.dataset.spot),
       h = chapter().hotspots.find((h) => h.id === b.dataset.spot);
@@ -171,18 +171,6 @@ function displayTag(p) {
 function portrait(id) {
   const p = person(id) || person('narrator');
   return `<div class="portrait-area"><div class="portrait">${figure(p.id, p.color)}</div><div class="portrait-caption">${displayTag(p)}</div></div>`;
-}
-function requirements(choice) {
-  const missing = [];
-  if (choice.requires && !state.evidence.includes(choice.requires))
-    missing.push(EVIDENCE[choice.requires].title);
-  for (const f of choice.requiresFlags || [])
-    if (!state.flags[f])
-      missing.push({ exitOpened: '打开侧门', lizaWarned: '核实指控并提醒丽莎' }[f] || '前置行动');
-  return missing.length ? '需要：' + missing.join(' ＋ ') : '';
-}
-function choiceButtons(choices) {
-  return `<div class="choices">${choices.map((ch, i) => `<button class="choice" data-choice="${i}" ${available(ch, state) ? '' : 'disabled'}><span class="choice-key">${i + 1}</span><span>${ch.label}${requirements(ch) ? `<small>${requirements(ch)}</small>` : ''}</span><span class="arrow">↗</span></button>`).join('')}</div>`;
 }
 function explore() {
   phase = 'browse';
@@ -208,19 +196,19 @@ function renderNarrative() {
     text = chapter().intro,
     html = '';
   if (phase === 'chapter-intro') {
-    html =
-      '<div class="continue-row"><span class="quiet">走近人物，听他们说话</span><button class="primary" id="begin-explore">开始探索 →</button></div>';
+    html = `<p class="visit-notice">每幕可以确认两次走访。先交谈再决定，离开对话不消耗机会；已走访地点可免费回看。</p><div class="continue-row"><span class="quiet">走近人物，听他们说话</span><button class="primary" id="begin-explore">开始探索 →</button></div>`;
   } else if (phase === 'spot') {
     id = selected.person || 'narrator';
     text = selected.text;
     html = selected.choices
-      ? choiceButtons(selected.choices)
+      ? choiceButtons(selected.choices, state)
       : '<div class="continue-row"><span class="quiet">调查消耗 1 次走访</span><button class="primary" id="record">记入手册 →</button></div>';
+    html += `<p class="visit-notice" role="status">本幕还可走访 ${2 - state.visited.length} 处。确认选项或记入手册会消耗 1 次。</p>`;
     html += '<button class="dialogue-leave" id="back-explore">结束交谈 <kbd>Esc</kbd></button>';
   } else if (phase === 'event') {
     id = chapter().event.person;
     text = chapter().event.text;
-    html = choiceButtons(chapter().event.choices);
+    html = choiceButtons(chapter().event.choices, state);
   } else if (['result', 'event-result', 'revisit'].includes(phase)) {
     id = result.person || 'narrator';
     text = result.text;
@@ -231,7 +219,7 @@ function renderNarrative() {
     html += `<div class="continue-row"><span class="quiet">${phase === 'revisit' ? '回看不消耗走访机会' : '已记入见闻录'}</span><button class="primary" id="continue">${phase === 'event-result' ? (state.finished ? '展开最终记录' : '前往下一幕') : '返回场景'} <span>→</span><kbd>Space</kbd></button></div>`;
   }
   const p = person(id) || person('narrator');
-  el.innerHTML = `${portrait(id)}<div class="dialogue-body"><div class="speaker-row"><span class="speaker-name">${p.name}</span><span class="speaker-role">${id === 'narrator' ? '小城的观察者 · 你' : displayTag(p)}</span><span class="dialogue-mode">${phase === 'event' ? '幕间抉择' : phase === 'chapter-intro' ? chapter().subtitle : phase === 'spot' ? '交谈中' : '见闻手记'}</span></div><p class="dialogue-text" aria-live="polite">${escape(text)}</p>${html}</div>`;
+  el.innerHTML = `${portrait(id)}<div class="dialogue-body"><div class="speaker-row"><span class="speaker-name">${p.name}</span><span class="speaker-role">${id === 'narrator' ? '小城的观察者 · 你' : displayTag(p)}</span><span class="dialogue-mode">${phase === 'event' ? '幕间抉择' : phase === 'chapter-intro' ? chapter().subtitle : phase === 'spot' ? '交谈中' : '见闻手记'}</span></div><p class="dialogue-text" tabindex="-1">${escape(text)}</p>${html}</div>`;
   el.querySelectorAll('[data-choice]').forEach(
     (b) => (b.onclick = () => choose(Number(b.dataset.choice))),
   );
@@ -247,6 +235,7 @@ function renderNarrative() {
   });
   el.scrollTop = 0;
   measureDialogue();
+  if (!modal.open) el.querySelector('.dialogue-text')?.focus({ preventScroll: true });
 }
 function measureDialogue() {
   const el = $('#narrative');
@@ -269,6 +258,7 @@ function bindShell() {
       }),
   );
   $('#pause').onclick = showPause;
+  $('#quest-direction').onclick = approachExit;
   $('#fullscreen').onclick = toggleFullscreen;
   $('#era').onclick = showEra;
   document.querySelectorAll('[data-spot]').forEach(
@@ -467,53 +457,44 @@ function updateContext() {
     p.innerHTML = `<kbd>E</kbd><span>${key === 'ending' ? '查看最终记录' : key === 'exit' ? '离开这里 · 继续故事' : `${state.visited.includes(key) ? '回看' : nearest.kind} · ${nearest.label}`}</span>`;
 }
 function moveFrame(time) {
-  const dt = Math.min((time - frameTime) / 1000, 0.05);
+  const dt = Math.min((time - frameTime) / 1000, 0.1);
   frameTime = time;
-  let dir = 0;
-  if (
-    !modal.open &&
-    state.started &&
-    !state.finished &&
-    ['browse', 'chapter-intro'].includes(phase)
-  ) {
-    if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A')) dir--;
-    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) dir++;
-    if (dir) {
-      if (phase === 'chapter-intro') explore();
-      walkTarget = null;
-    } else if (walkTarget) {
-      const distance = walkTarget.x - state.x;
-      if (Math.abs(distance) < 0.55) {
-        const target = walkTarget;
-        walkTarget = null;
-        state.x = target.x;
-        save();
-        if (target.exit) enterEvent();
-        else if (target.id) openSpot(target.id);
-      } else dir = Math.sign(distance);
-    }
+  if (document.hidden || modal.open) {
+    requestAnimationFrame(moveFrame);
+    return;
   }
-  if (dir) {
-    const speed = keys.has('Shift') ? 31 : 20;
-    let next = state.x + dir * dt * speed;
-    if (walkTarget && Math.sign(walkTarget.x - next) !== Math.sign(walkTarget.x - state.x))
-      next = walkTarget.x;
-    state.x = Math.max(6, Math.min(94, next));
+  const movement = stepMovement(
+    state.x,
+    keys,
+    walkTarget,
+    dt,
+    !modal.open && state.started && !state.finished && ['browse', 'chapter-intro'].includes(phase),
+  );
+  const { dir, arrived } = movement;
+  if (movement.manual && phase === 'chapter-intro') explore();
+  state.x = movement.x;
+  walkTarget = movement.target;
+  if (arrived) {
+    save();
+    if (arrived.exit) enterEvent();
+    else if (arrived.id) openSpot(arrived.id);
   }
   if (phase !== 'event-result') visualX = state.x;
   const actor = $('#actor'),
     world = $('#world');
   if (actor && world) {
-    actor.style.left = visualX + '%';
-    actor.classList.toggle('walking', !!dir);
-    if (dir) actor.classList.toggle('facing-left', dir < 0);
-    const target = Math.max(
-      0,
-      Math.min(worldWidth - viewWidth, (visualX / 100) * worldWidth - viewWidth * 0.4),
-    );
-    camera += (target - camera) * Math.min(1, dt * 6);
-    cameraRise += (dialogueRise - cameraRise) * Math.min(1, dt * 8);
-    world.style.transform = `translate3d(${-camera}px,${-cameraRise}px,0)`;
+    const left = visualX + '%';
+    if (actor.style.left !== left) actor.style.left = left;
+    if (actor.classList.contains('walking') !== !!dir) actor.classList.toggle('walking', !!dir);
+    if (dir && actor.classList.contains('facing-left') !== dir < 0)
+      actor.classList.toggle('facing-left', dir < 0);
+    const target = cameraTarget(visualX, worldWidth, viewWidth);
+    camera += (target - camera) * (reducedMotion.matches ? 1 : Math.min(1, dt * 6));
+    cameraRise += (dialogueRise - cameraRise) * (reducedMotion.matches ? 1 : Math.min(1, dt * 8));
+    if (Math.abs(target - camera) < 0.1) camera = target;
+    if (Math.abs(dialogueRise - cameraRise) < 0.1) cameraRise = dialogueRise;
+    const transform = `translate3d(${-camera}px,${-cameraRise}px,0)`;
+    if (world.style.transform !== transform) world.style.transform = transform;
     $('#destination').hidden = !walkTarget;
     updateContext();
   }
@@ -521,6 +502,7 @@ function moveFrame(time) {
 }
 document.addEventListener('keydown', (e) => {
   if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  if (!modal.open && focusDialogueControl(e, $('#narrative'))) return;
   if (modal.open) {
     if ((e.key === 'f' || e.key === 'F') && modal.classList.contains('title-modal')) {
       e.preventDefault();
@@ -589,7 +571,8 @@ window.addEventListener('blur', () => {
 });
 window.addEventListener('pagehide', () => {
   save();
-  ambient?.ctx.suspend();
+  ambient.pause().catch(() => {});
+  settings.sound = false;
 });
 function openModal(title, subtitle, body, className = '') {
   keys.clear();
@@ -599,8 +582,13 @@ function openModal(title, subtitle, body, className = '') {
   modal.className = className;
   modal.innerHTML = `<div class="modal-header"><div><h2 id="modal-title">${title}</h2><p>${subtitle}</p></div><button class="close-btn" aria-label="关闭窗口">×</button></div><div class="modal-body">${body}</div>`;
   if (!modal.open) modal.showModal();
+  $('#context-prompt').hidden = true;
+  $('#actor')?.classList.remove('walking');
   modal.scrollTop = 0;
   modal.querySelector('.close-btn').onclick = () => modal.close();
+  (
+    modal.querySelector('.modal-body button:not(:disabled)') || modal.querySelector('.close-btn')
+  )?.focus({ preventScroll: true });
 }
 modal.addEventListener('close', () => {
   contextKey = '';
@@ -608,7 +596,12 @@ modal.addEventListener('close', () => {
     queueMicrotask(showIntro);
     return;
   }
-  focusBeforeModal?.isConnected && focusBeforeModal.focus({ preventScroll: true });
+  if (modal.open) return;
+  const focus =
+    focusBeforeModal?.isConnected && !focusBeforeModal.closest('[inert]')
+      ? focusBeforeModal
+      : $('#narrative:not([hidden]) .dialogue-text') || $('#stage');
+  focus?.focus({ preventScroll: true });
 });
 modal.addEventListener('cancel', (e) => {
   if (modal.classList.contains('title-modal')) e.preventDefault();
@@ -674,7 +667,7 @@ function showMap() {
   openModal(
     '小城地图',
     '六个场景，按故事顺序抵达',
-    `<p class="map-tip">${state.visited.length < 2 ? `本幕还可以走访 ${2 - state.visited.length} 处。点击当前地点的目标，可直接走近。` : '本幕走访已完成，请返回场景，走到右侧出口继续故事。'} 阅读不计时；未来的地点随剧情开放。</p><div class="map-grid">${CHAPTERS.map((c, i) => `<section class="map-location ${i === state.chapter ? 'current' : ''}"><div class="map-vignette">${sceneSVG(c.mood)}</div><small>ACT ${i + 1} · ${i < state.chapter ? '已留下记录' : i === state.chapter ? '你在这里' : '尚未抵达'}</small><h3>${c.place}</h3><p>${c.subtitle} · ${c.title}</p>${i === state.chapter ? `<div class="choices">${c.hotspots.map((h) => `<button class="secondary" data-map-spot="${h.id}" ${state.finished ? 'disabled' : ''}>${state.visited.includes(h.id) ? '✓ ' : ''}${h.label} ↗</button>`).join('')}</div>` : ''}</section>`).join('')}</div>`,
+    `<p class="map-tip">${state.visited.length < 2 ? `本幕还可以走访 ${2 - state.visited.length} 处。点击当前地点的目标，可直接走近。` : '本幕走访已完成，请返回场景，走到右侧出口继续故事。'} 阅读不计时；未来的地点随剧情开放。</p><div class="map-grid">${CHAPTERS.map((c, i) => `<section class="map-location ${i === state.chapter ? 'current' : ''}"><div class="map-vignette">${sceneSVG(c.mood, { texture: false })}</div><small>ACT ${i + 1} · ${i < state.chapter ? '已留下记录' : i === state.chapter ? '你在这里' : '尚未抵达'}</small><h3>${c.place}</h3><p>${c.subtitle} · ${c.title}</p>${i === state.chapter ? `<div class="choices">${c.hotspots.map((h) => `<button class="secondary" data-map-spot="${h.id}" ${state.finished ? 'disabled' : ''}>${state.visited.includes(h.id) ? '✓ ' : ''}${h.label} ↗</button>`).join('')}</div>` : ''}</section>`).join('')}</div>`,
   );
   document.querySelectorAll('[data-map-spot]').forEach(
     (b) =>
@@ -792,7 +785,7 @@ function showSettings() {
   $('#import-save').onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 500000) {
+    if (file.size > MAX_SAVE_BYTES) {
       toast('存档文件过大，请选择本游戏导出的 JSON。');
       return;
     }
@@ -811,11 +804,19 @@ function showSettings() {
       $('#cancel-import').onclick = showSettings;
       $('#confirm-import').onclick = () => {
         state = pendingImport;
-        phase = 'browse';
+        phase = state.started && !state.log.length ? 'chapter-intro' : 'browse';
         selected = null;
+        result = null;
+        pendingImport = null;
+        keys.clear();
+        walkTarget = null;
+        renderedChapter = -1;
+        cameraRise = 0;
+        dialogueRise = 0;
         save();
         render();
         modal.close();
+        if (state.finished) showEnding();
         toast('已恢复旅程。');
       };
     } catch {
@@ -858,7 +859,7 @@ function showAbout() {
   openModal(
     '关于小城纸影',
     '《群魔》文学改编 · 本地独立网页游戏',
-    `<div class="about-copy"><p>你扮演叙述者，走访小城，核实传言并决定如何介入。六幕从原著场景中取材，压缩时间顺序；任务、对白、走访次数和结局判定均为游戏设计。</p><p>原著提要与改编结局分别展示。丽莎、沙托夫或基里洛夫受到及时帮助的路线属于反事实改编。人物手册中的完整速记保留用户提供的原著提要。</p><p>游戏包含死亡与自杀主题，以对话、场外叙事和事后记录表现。基里洛夫的观点属于人物思想，不代表游戏结论。</p><p>本作采用 1869 年秋作为改编的美术时间锚点。衣饰参考 1860 年代服装图版，布景为原创剪纸演绎。音乐由浏览器实时合成。无外部字体、图片、账号或网络 API。进度保存在当前浏览器，不会上传。</p><p>原著参考：<a href="https://www.gutenberg.org/ebooks/8117" target="_blank" rel="noreferrer">The Possessed / The Devils · Project Gutenberg ↗</a></p></div><div class="ending-actions"><button class="secondary" id="about-era">时代与美术参考 →</button><button class="secondary" id="about-settings">阅读与设置 →</button></div>`,
+    `<div class="about-copy"><p>你扮演叙述者，走访小城，核实传言并决定如何介入。六幕从原著场景中取材，压缩时间顺序；任务、对白、走访次数和结局判定均为游戏设计。</p><p>原著提要与改编结局分别展示。丽莎、沙托夫或基里洛夫受到及时帮助的路线属于反事实改编。人物手册中的简介为本项目重新撰写的阅读概述，并非原著译文。</p><p>游戏包含死亡与自杀主题，以对话、场外叙事和事后记录表现。基里洛夫的观点属于人物思想，不代表游戏结论。</p><p>本作采用 1869 年秋作为改编的美术时间锚点。衣饰参考 1860 年代服装图版，布景为原创剪纸演绎。音乐由浏览器实时合成。无外部字体、图片、账号或网络 API。进度保存在当前浏览器，不会上传。</p><p>作者：Ailln 与贡献者。软件实现采用 MIT，原创内容采用 CC BY 4.0。<a href="https://github.com/ai-graveyard/qunmo-game" target="_blank" rel="noreferrer">源码、许可与来源说明 ↗</a></p><p>原著参考：<a href="https://www.gutenberg.org/ebooks/8117" target="_blank" rel="noreferrer">The Possessed / The Devils · Project Gutenberg ↗</a></p></div><div class="ending-actions"><button class="secondary" id="about-era">时代与美术参考 →</button><button class="secondary" id="about-settings">阅读与设置 →</button></div>`,
   );
   $('#about-settings').onclick = showSettings;
   $('#about-era').onclick = showEra;
@@ -882,95 +883,22 @@ function showEnding() {
   $('#ending-restart').onclick = confirmRestart;
 }
 function download(name, body, type) {
-  const url = URL.createObjectURL(new Blob([body], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  downloadFile(name, body, type);
   toast('文件已准备下载。');
 }
 function exportJournal() {
-  const e = state.finished ? ending(state) : null;
-  let body = `《群魔 · 小城纸影》见闻录\n${e ? `结局：${e.type} · ${e.title}\n${e.text}\n` : '旅程尚未结束\n'}\n【证据】\n${state.evidence.map((id) => `${EVIDENCE[id].title}（${EVIDENCE[id].source}）\n${EVIDENCE[id].text}`).join('\n\n')}\n\n【行动记录】\n${state.log.map((l) => `${CHAPTERS[l.chapter].subtitle} · ${l.title}\n行动：${l.choice}\n${l.text}`).join('\n\n')}\n\n说明：本作对白、任务与命运分支为原创改编；请与原著区分。\n`;
-  download('群魔-我的小城见闻录.txt', body, 'text/plain;charset=utf-8');
+  download('群魔-我的小城见闻录.txt', journalText(state), 'text/plain;charset=utf-8');
 }
 function exportPeople() {
-  const rows = PEOPLE.map((p, i) => {
-    const y = 215 + i * 119;
-    const split = (s, n) =>
-      Array.from({ length: Math.ceil(s.length / n) }, (_, j) => s.slice(j * n, (j + 1) * n));
-    return `<g><rect x="55" y="${y}" width="1090" height="106" rx="5" fill="${i % 2 ? '#ebece0' : '#f0eee4'}"/><text x="78" y="${y + 37}" font-size="19" fill="#929e83">${String(i + 1).padStart(2, '0')}</text><text x="120" y="${y + 37}" font-size="25" font-weight="600" fill="#364b3d">${escape(p.name)}</text>${split(
-      p.full,
-      16,
-    )
-      .map(
-        (line, j) =>
-          `<text x="120" y="${y + 66 + j * 19}" font-size="14" fill="#858d79">${escape(line)}</text>`,
-      )
-      .join('')}${split(p.role, 16)
-      .map(
-        (line, j) =>
-          `<text x="342" y="${y + 35 + j * 27}" font-size="20" fill="#65765a">${escape(line)}</text>`,
-      )
-      .join('')}${split(p.note, 23)
-      .map(
-        (line, j) =>
-          `<text x="685" y="${y + 35 + j * 27}" font-size="21" fill="#48583f">${escape(line)}</text>`,
-      )
-      .join('')}</g>`;
-  }).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3300" viewBox="0 0 1200 1650"><rect width="1200" height="1650" fill="#f8f5eb"/><g font-family="Songti SC,STSong,serif"><text x="58" y="78" font-size="17" letter-spacing="5" fill="#81916e">БѢСЫ · ОСЕНЬ 1869</text><text x="55" y="147" font-size="54" font-weight="600" fill="#354b3b">群魔 · 人物身份图</text><text x="58" y="184" font-size="18" fill="#8b927e">完整原著提要 / 含剧透 · 与游戏改编分支分开阅读</text><text x="120" y="204" font-size="13" fill="#8c947e">人物</text><text x="342" y="204" font-size="13" fill="#8c947e">身份</text><text x="685" y="204" font-size="13" fill="#8c947e">一句话速记</text>${rows}<path d="M55 1560H1145" stroke="#cbd2bc"/><text x="58" y="1596" font-size="16" fill="#8a937c">《群魔》阅读手册 · 用户提供的人物提要 · 小城纸影</text></g></svg>`;
-  download('群魔-一页人物身份图.svg', svg, 'image/svg+xml;charset=utf-8');
+  download('群魔-一页人物身份图.svg', peopleSVG(), 'image/svg+xml;charset=utf-8');
 }
 async function toggleSound() {
   try {
-    if (settings.sound) {
-      ambient?.ctx.suspend();
-      settings.sound = false;
-    } else {
-      if (!ambient) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) {
-          toast('当前浏览器不支持环境音乐。');
-          return;
-        }
-        const ctx = new AC(),
-          gain = ctx.createGain();
-        gain.gain.value = 0.035;
-        gain.connect(ctx.destination);
-        [130.81, 196, 261.63].forEach((f, i) => {
-          const o = ctx.createOscillator(),
-            g = ctx.createGain();
-          o.type = 'sine';
-          o.frequency.value = f;
-          g.gain.value = 0.14;
-          o.connect(g);
-          g.connect(gain);
-          o.start();
-          const lfo = ctx.createOscillator(),
-            lg = ctx.createGain();
-          lfo.frequency.value = 0.06 + i * 0.019;
-          lg.gain.value = 0.1;
-          lfo.connect(lg);
-          lg.connect(g.gain);
-          lfo.start();
-        });
-        ambient = { ctx };
-      }
-      await ambient.ctx.resume();
-      settings.sound = true;
-    }
-    const b = $('#sound');
-    if (b) {
-      b.innerHTML = icon(settings.sound ? 'sound' : 'mute');
-      b.setAttribute('aria-label', `${settings.sound ? '关闭' : '开启'}环境音乐`);
-      b.title = b.getAttribute('aria-label');
-    }
-  } catch {
-    toast('浏览器暂时未能开启音乐，请再点击一次。');
+    if (settings.sound) await ambient.pause();
+    else await ambient.play();
+    settings.sound = !settings.sound;
+  } catch (error) {
+    toast(error.message || '浏览器暂时未能开启音乐，请再点击一次。');
   }
 }
 render();

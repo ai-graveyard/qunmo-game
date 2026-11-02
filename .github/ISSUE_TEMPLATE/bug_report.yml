@@ -1,0 +1,28 @@
+name: 问题反馈
+description: 报告无法运行、存档、剧情或界面问题
+title: '[Bug] '
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 说明从哪一幕、哪个操作开始；剧透请使用折叠区。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 设备、操作系统、浏览器及游戏版本
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或错误信息
+      description: 可以附不包含个人信息的游戏存档；请勿附账号或凭证。

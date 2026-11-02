@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../cloudflare/worker.mjs';
+import { RUNTIME_FILES } from '../runtime-files.mjs';
 
 const env = {
   ASSETS: {
@@ -11,6 +12,30 @@ const env = {
   },
 };
 const request = (path, options) => new Request('https://game.v2ai.org' + path, options);
+
+test('Fork 可以使用根路径或自己的嵌套子路径，所有运行模块均可访问', async () => {
+  for (const base of ['', '/my-game', '/games/paper-town']) {
+    const configured = { ...env, BASE_PATH: base, HTTPS_HOST: '' };
+    for (const file of RUNTIME_FILES) {
+      const response = await worker.fetch(request(`${base}/${file}`), configured);
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), '/' + file);
+    }
+    assert.equal(await (await worker.fetch(request(base + '/'), configured)).text(), '/index.html');
+    assert.equal((await worker.fetch(request(base + '/README.md'), configured)).status, 404);
+    const head = await worker.fetch(request(base + '/app.mjs', { method: 'HEAD' }), configured);
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), '');
+  }
+});
+
+test('无效部署路径明确报错，非本游戏的路径保持 404', async () => {
+  assert.equal((await worker.fetch(request('/'), { ...env, BASE_PATH: '/' })).status, 500);
+  assert.equal(
+    (await worker.fetch(request('/my-game-other/'), { ...env, BASE_PATH: '/my-game' })).status,
+    404,
+  );
+});
 
 test('入口补尾斜杠且保留查询参数，使相对模块地址正确', async () => {
   const response = await worker.fetch(request('/qunmo?from=share'), env);

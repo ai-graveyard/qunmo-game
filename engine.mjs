@@ -1,5 +1,5 @@
-import { CHAPTERS, EVIDENCE } from './data.mjs';
-export const SAVE_KEY = 'qunmo-paper-town-v1';
+import { CHAPTERS } from './data.mjs';
+export { restore, SAVE_KEY } from './save.mjs';
 export function newGame() {
   return {
     version: 1,
@@ -88,45 +88,4 @@ export function ending(s) {
     title: '纸上的清晨',
     text: '你把亲见与传闻分开，把不能确认的部分留白。这份记录不能挽回已经发生的事，却让小城没有只剩下操纵者的解释。',
   };
-}
-export function restore(raw) {
-  try {
-    const s = JSON.parse(raw);
-    if (
-      s?.version !== 1 ||
-      !Number.isInteger(s.chapter) ||
-      s.chapter < 0 ||
-      s.chapter >= CHAPTERS.length ||
-      !Array.isArray(s.visited) ||
-      s.visited.length > 2 ||
-      !s.visited.every((id) => CHAPTERS[s.chapter].hotspots.some((h) => h.id === id)) ||
-      new Set(s.visited).size !== s.visited.length ||
-      !Array.isArray(s.evidence) ||
-      !s.evidence.every((id) => EVIDENCE[id]) ||
-      !s.flags ||
-      typeof s.flags !== 'object' ||
-      Array.isArray(s.flags) ||
-      !s.stats ||
-      !['clarity', 'care', 'complicity', 'unrest'].every(
-        (k) => Number.isFinite(s.stats[k]) && s.stats[k] >= 0,
-      ) ||
-      !Array.isArray(s.log) ||
-      !s.log.every(
-        (l) =>
-          l &&
-          Number.isInteger(l.chapter) &&
-          typeof l.title === 'string' &&
-          typeof l.text === 'string' &&
-          typeof l.choice === 'string',
-      ) ||
-      typeof s.started !== 'boolean' ||
-      typeof s.finished !== 'boolean' ||
-      (s.finished && (s.chapter !== 5 || s.visited.length !== 2))
-    )
-      return null;
-    s.x = Number.isFinite(s.x) ? Math.min(94, Math.max(6, s.x)) : 12;
-    return s;
-  } catch {
-    return null;
-  }
 }

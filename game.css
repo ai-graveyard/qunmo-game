@@ -1502,6 +1502,11 @@ dialog.title-modal {
     margin: 6px 0;
   }
   .quest-foot {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 3px;
+  }
+  .quest-foot #quest-act {
     display: none;
   }
   .hud-location h1 {
@@ -1704,5 +1709,43 @@ dialog.title-modal {
     right: 3%;
     height: 28%;
     bottom: 7%;
+  }
+}
+
+/* Reading and navigation feedback shared by mouse, keyboard and touch. */
+.visit-notice {
+  font: 13px/1.7 var(--sans);
+  color: #62694d;
+  margin: 12px 0 0;
+}
+#quest-direction {
+  pointer-events: auto;
+  font: inherit;
+  padding: 6px 0;
+  text-align: right;
+  color: inherit;
+}
+#quest-direction:enabled {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#quest-direction:disabled {
+  cursor: default;
+  opacity: 1;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+label:focus-within {
+  outline: 2px solid #485f43;
+  outline-offset: 4px;
+}
+.dialogue-text:focus {
+  outline: none;
+}
+@media (max-width: 650px) {
+  .visit-notice {
+    font-size: 12px;
   }
 }

@@ -202,7 +202,8 @@ function humbleRoom(meeting = false) {
  <path d="M0 621Q470 593 830 619T1500 612V650H0Z" fill="#999d80" opacity=".25"/>`;
 }
 
-export function sceneSVG(mood = 'salon') {
+let sceneSequence = 0;
+export function sceneSVG(mood = 'salon', { texture = true } = {}) {
   const body =
     mood === 'salon'
       ? salon()
@@ -219,7 +220,12 @@ export function sceneSVG(mood = 'salon') {
     night: '河岸省城的夜色、点亮的窗户与路灯',
     dawn: '清晨河岸、木屋、灰泥宅邸与落叶',
   };
-  return `<svg class="scene-art" viewBox="0 0 1500 650" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${labels[mood] || labels.dawn}">${defs}<g filter="url(#paper)">${body}</g></svg>`;
+  // Multiple scenes coexist in the map and title. Keep filter/pattern IDs local
+  // to each SVG; thumbnails omit the costly paper-noise filter.
+  const prefix = `scene-${++sceneSequence}-`;
+  return `<svg class="scene-art" viewBox="0 0 1500 650" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${labels[mood] || labels.dawn}">${defs}<g ${texture ? 'filter="url(#paper)"' : ''}>${body}</g></svg>`
+    .replace(/\bid="([^"]+)"/g, (_, id) => `id="${prefix}${id}"`)
+    .replace(/url\(#([^)]+)\)/g, (_, id) => `url(#${prefix}${id})`);
 }
 
 export function propSVG(kind = 'letter') {
