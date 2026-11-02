@@ -8,6 +8,8 @@ import { createAmbientAudio } from './ui/audio.mjs';
 import { downloadFile, journalText, peopleSVG } from './ui/downloads.mjs';
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const ambient = createAmbientAudio();
+let renderedWorld = null,
+  renderedWorldTransform = '';
 
 const $ = (s) => document.querySelector(s);
 const icon = (name) => {
@@ -111,7 +113,7 @@ function render() {
   contextKey = '';
   $('#app').innerHTML =
     `<main id="game-root" class="game-shell mood-${c.mood}" aria-label="群魔 · 全屏剪纸冒险">
- <section id="stage" class="game-stage" aria-label="可探索的剪纸场景" tabindex="-1"><div id="world" class="game-world">${sceneSVG(c.mood)}<div class="scene-depth"></div>
+ <section id="stage" class="game-stage" aria-label="可探索的剪纸场景" tabindex="-1"><div id="world" class="game-world">${sceneSVG(c.mood, { texture: false })}<div class="scene-depth"></div>
  ${c.hotspots.map((h) => `<button class="hotspot ${state.visited.includes(h.id) ? 'visited' : ''}" data-spot="${h.id}" style="left:${h.x}%" aria-label="${h.kind}：${h.label}${state.visited.includes(h.id) ? '（已走访）' : ''}"><span class="hotspot-marker">${state.visited.includes(h.id) ? '✓' : '◇'}</span>${h.person ? `<span class="npc-figure">${figure(h.person, person(h.person).color)}</span>` : `<span class="prop-icon">${propSVG(propKind(h.id))}</span>`}<span class="hotspot-label">${h.label}<small>${h.kind}</small></span></button>`).join('')}
  <button id="scene-exit" class="scene-exit" style="left:95%" aria-label="前往出口" hidden><span class="exit-arrow">➜</span><span>离开这里<small>继续故事</small></span></button>
  <div id="destination" class="destination" hidden></div><div class="actor" id="actor" style="left:${state.x}%">${figure()}<div class="actor-label">叙述者</div></div></div><div class="screen-grain"></div><div class="scene-shade"></div></section>
@@ -437,7 +439,8 @@ function sizeWorld() {
 }
 function updateContext() {
   if (phase !== 'browse' || modal.open) {
-    $('#context-prompt').hidden = true;
+    const prompt = $('#context-prompt');
+    if (!prompt.hidden) prompt.hidden = true;
     return;
   }
   const nearest = [...chapter().hotspots].sort(
@@ -494,8 +497,13 @@ function moveFrame(time) {
     if (Math.abs(target - camera) < 0.1) camera = target;
     if (Math.abs(dialogueRise - cameraRise) < 0.1) cameraRise = dialogueRise;
     const transform = `translate3d(${-camera}px,${-cameraRise}px,0)`;
-    if (world.style.transform !== transform) world.style.transform = transform;
-    $('#destination').hidden = !walkTarget;
+    if (world !== renderedWorld || renderedWorldTransform !== transform) {
+      world.style.transform = transform;
+      renderedWorld = world;
+      renderedWorldTransform = transform;
+    }
+    const destination = $('#destination');
+    if (destination.hidden !== !walkTarget) destination.hidden = !walkTarget;
     updateContext();
   }
   requestAnimationFrame(moveFrame);
@@ -645,7 +653,7 @@ function showIntro() {
   openModal(
     '群魔 · 小城纸影',
     '一八六九 · 秋日省城',
-    `<div class="title-screen"><div class="title-landscape">${sceneSVG('dawn')}</div><div class="title-wash"></div><div class="title-content"><div class="title-overline">БѢСЫ <span>／ ОСЕНЬ 1869</span></div><h2>群魔</h2><p class="title-subtitle">小城纸影</p><div class="title-rule"></div><p class="title-description">秋风经过省城。<br>有人请你递一封信，有人请你保守秘密。<br>这一次，你会怎样走进他们的生活？</p><div class="title-menu">${state.started ? '<button id="resume">继续旅程 <span>→</span></button><button id="fresh">重新开始</button>' : '<button id="begin">进入小城 <span>→</span></button>'}<button id="title-settings">阅读与设置</button><button id="title-help">操作指南</button></div></div><div class="title-cast"><div class="cast-person cast-one">${figure('pyotr', '#a0664f')}</div><div class="cast-person cast-two">${figure('stavrogin', '#4c6064')}</div><div class="cast-person cast-three">${figure('liza', '#a87968')}</div></div><div class="title-footer"><span>原创剪纸叙事冒险 · 根据陀思妥耶夫斯基《群魔》改编</span><span>含原著剧透、死亡与自杀主题 · 本机自动存档</span></div><button class="title-fullscreen" id="title-fullscreen" aria-label="切换全屏">${icon('full')} 全屏游玩 <kbd>F</kbd></button></div>`,
+    `<div class="title-screen"><div class="title-landscape">${sceneSVG('dawn', { texture: false })}</div><div class="title-wash"></div><div class="title-content"><div class="title-overline">БѢСЫ <span>／ ОСЕНЬ 1869</span></div><h2>群魔</h2><p class="title-subtitle">小城纸影</p><div class="title-rule"></div><p class="title-description">秋风经过省城。<br>有人请你递一封信，有人请你保守秘密。<br>这一次，你会怎样走进他们的生活？</p><div class="title-menu">${state.started ? '<button id="resume">继续旅程 <span>→</span></button><button id="fresh">重新开始</button>' : '<button id="begin">进入小城 <span>→</span></button>'}<button id="title-settings">阅读与设置</button><button id="title-help">操作指南</button></div></div><div class="title-cast"><div class="cast-person cast-one">${figure('pyotr', '#a0664f')}</div><div class="cast-person cast-two">${figure('stavrogin', '#4c6064')}</div><div class="cast-person cast-three">${figure('liza', '#a87968')}</div></div><div class="title-footer"><span>原创剪纸叙事冒险 · 根据陀思妥耶夫斯基《群魔》改编</span><span>含原著剧透、死亡与自杀主题 · 本机自动存档</span></div><button class="title-fullscreen" id="title-fullscreen" aria-label="切换全屏">${icon('full')} 全屏游玩 <kbd>F</kbd></button></div>`,
     'title-modal',
   );
   const start = () => {
