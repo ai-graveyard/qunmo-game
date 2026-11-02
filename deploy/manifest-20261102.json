@@ -1,0 +1,15 @@
+{
+  "target": "https://game.v2ai.org/qunmo/",
+  "files": {
+    "index.html": "9ae2554125448eceac76979c2155895907122d9d012405f18acc406c44486548",
+    "favicon.svg": "3562f8fee5050dd717a9c3d6515942be06e4494377f3f23dee5ba0375ea76b47",
+    "style.css": "fc0b4a1ee6ce0b8f3886cbf84dd6d866b3d83182f596dd831a2bdf76a8f6f1a1",
+    "period.css": "ad46b53cddd474f67dd48d4ffc2db566682bcd473c479e1f90e3c12de65d16c1",
+    "game.css": "cc0c32c6a9466c3478eddbff8c8cc35f15fa69b8142643b6d47d732f249b1077",
+    "app.mjs": "93ba4c7bee9b99781ba45b47148a930cca6ec800cb13b21809bc325a74404fed",
+    "data.mjs": "1fec5bf11603566e385a50845da922bb948155b2e07b9523d33dc30e46911b64",
+    "engine.mjs": "f6687d26be1a65a2ba65bac482388c993be291517f9fe37a5dd396bfef1cc536",
+    "art.mjs": "2263f3acc4169507f2950b6f5cbbc197f0c22f85dae907cdfb128e772a974138",
+    "period-art.mjs": "9de81aee284d31a60bf3b567c05d4be3f37501d93e0a7921e322fe5d9c1ef43d"
+  }
+}
